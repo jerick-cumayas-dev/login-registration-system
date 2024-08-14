@@ -1,5 +1,9 @@
 #include "headers/user.h"
+#include "nlohmann/json.hpp"
+#include <conio.h>
+#include <fstream>
 #include <iostream>
+using json = nlohmann::json;
 
 int displayDashboard(User *&accounts, int &accountsLength, int &capacity);
 void displayAccounts(User *accounts, int accountsLength);
@@ -7,6 +11,10 @@ void appendUser(User *&accounts, User &user, int &accountsLength,
                 int &capacity);
 void displayLoginPage(User *accounts, int accountsLength);
 void displayRegisterPage(User *&accounts, int &accountsLength, int &capacity);
+void saveAccountsToJson(User *&accounts, int &accountsLength,
+                        const std::string filename);
+void loadAccountsFromJson(User *&accounts, int &accountsLength, int &capacity,
+                          const std::string filename);
 
 int main() {
   int choice = 0;
@@ -14,10 +22,15 @@ int main() {
   int accountsLength = 0;
   int capacity = 0;
 
+  loadAccountsFromJson(accounts, accountsLength, capacity, "accounts.json");
+
   do {
     system("cls");
     choice = displayDashboard(accounts, accountsLength, capacity);
+    _getch(); // Pause before continuing
   } while (choice != 4);
+
+  saveAccountsToJson(accounts, accountsLength, "accounts.json");
 
   return 0;
 }
@@ -50,9 +63,7 @@ int displayDashboard(User *&accounts, int &accountsLength, int &capacity) {
     std::cout << "Invalid input." << std::endl;
     break;
   }
-  std::cin >> random;
   return choice; // Returning the choice to determine if the loop should
-                 // continue
 }
 
 void displayAccounts(User *accounts, int accountsLength) {
@@ -77,8 +88,6 @@ void displayLoginPage(User *accounts, int accountsLength) {
   std::cout << "Password: ";
   std::cin >> password;
 
-  std::cout << "Email: " << email << "Password: " << password << std::endl;
-
   bool found = false;
 
   for (int i = 0; i < accountsLength; i++) {
@@ -87,8 +96,6 @@ void displayLoginPage(User *accounts, int accountsLength) {
       found = true;
       break;
     }
-    std::cout << accounts[i].getEmail() << "," << accounts[i].getPassword()
-              << std::endl;
   }
 
   if (found) {
@@ -144,6 +151,46 @@ void appendUser(User *&accounts, User &newUser, int &accountsLength,
     capacity = newCapacity;
   }
   accounts[accountsLength++] = newUser;
-  std::cout << accounts[accountsLength - 1].getEmail() << ", "
-            << accounts[accountsLength - 1].getPassword() << std::endl;
+}
+
+void saveAccountsToJson(User *&accounts, int &accountsLength,
+                        const std::string filename) {
+  json jsonData;
+
+  for (int i = 0; i < accountsLength; i++) {
+    jsonData.push_back({{"firstName", accounts[i].getFirstName()},
+                        {"lastName", accounts[i].getLastName()},
+                        {"email", accounts[i].getEmail()},
+                        {"password", accounts[i].getPassword()}});
+  }
+
+  std::ofstream file(filename);
+  if (file.is_open()) {
+    file << jsonData.dump(4);
+    file.close();
+    std::cout << "Accounts have been saved to json file." << std::endl;
+  } else {
+    std::cerr << "Unable to open file for writing." << std::endl;
+  }
+}
+
+void loadAccountsFromJson(User *&accounts, int &accountsLength, int &capacity,
+                          const std::string filename) {
+  std::ifstream file(filename);
+  if (!file.is_open()) {
+    std::cerr << "Error opening json file." << std::endl;
+  }
+
+  json jsonData;
+  file >> jsonData;
+
+  for (const auto &user : jsonData) {
+    User newUser(user["firstName"].get<std::string>(),
+                 user["lastName"].get<std::string>(),
+                 user["email"].get<std::string>(),
+                 user["password"].get<std::string>());
+    appendUser(accounts, newUser, accountsLength, capacity);
+  }
+
+  std::cout << "Accounts have been loaded from json." << std::endl;
 }
