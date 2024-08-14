@@ -1,4 +1,4 @@
-#include "user.h"
+#include "headers/user.h"
 #include <iostream>
 
 int displayDashboard(User *&accounts, int &accountsLength, int &capacity);
